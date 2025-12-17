@@ -1,0 +1,100 @@
+version: '3'
+services:
+  asterisk:
+    #自行编译请取消如下注释
+    #build: .
+    #image: asterisk-docker-iax
+    image: kafuneri/asterisk-docker-iax:arm64
+    container_name: asterisk-ec20
+    restart: always
+    # Privileged mode is required for direct hardware access (Audio/USB)
+    # 开启特权模式以获取硬件访问权限（声卡/USB热插拔支持）
+    privileged: true
+
+    # Device Mappings (Using persistent 'by-id' paths)
+    # 设备映射（使用 by-id 固定路径，防止重启后 USB 序号漂移）
+    devices:
+      # DM Port / 诊断口
+      # 请修改为实际的设备ID: ls -l /dev/serial/by-id/
+      - /dev/serial/by-id/usb-Your_Module_ID-if00-port0:/dev/ttyUSB0
+      # Audio & GPS Port / 音频与GPS口 (Vital for chan_quectel)
+      - /dev/serial/by-id/usb-Your_Module_ID-if01-port0:/dev/ttyUSB1
+      # AT Command Port / AT指令口 (Vital for chan_quectel)
+      - /dev/serial/by-id/usb-Your_Module_ID-if02-port0:/dev/ttyUSB2
+      # PPP Port / 拨号口
+      - /dev/serial/by-id/usb-Your_Module_ID-if03-port0:/dev/ttyUSB3
+      # Passthrough host sound card for UAC audio
+      # 透传宿主机声卡设备以支持 UAC 数字音频
+      - /dev/snd:/dev/snd
+
+    # Port Mapping: Host(23388) -> Container(4569/UDP)
+    # 端口映射：将宿主机自定义端口映射到容器标准 IAX2 端口
+    ports:
+      - "23388:4569/udp"
+
+    volumes:
+      # --- Configuration Templates (Read-Only) ---
+      # --- 配置模板挂载 (只读模式，用于启动脚本注入变量) ---
+      - ./config:/etc/asterisk_templates:ro
+
+      # --- Scripts & Logs ---
+      # --- 脚本与日志挂载 ---
+      - ./bot.py:/opt/bot.py
+      - ./start.sh:/opt/start.sh
+      - ./logs:/var/log/asterisk
+
+      # --- System Timezone ---
+      # --- 同步宿主机时区 ---
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
+    environment:
+      # Timezone Setting
+      # 时区设置
+      - TZ=Asia/Shanghai
+
+      # === Notification Channels Configuration ===
+      # === 通知渠道开关配置 ===
+      # Format: TG, QQ, DingTalk (1=Enable, 0=Disable)
+      # 格式：TG, QQ, 钉钉 (1=启用, 0=关闭) ；示例：短信全发，来电只发QQ
+      # 短信通知
+      - SMS_NOTIFY_SWITCH=1,1,1
+      # 来电通知
+      - CALL_NOTIFY_SWITCH=0,1,0
+
+      # === IAX2 Credentials (Injected into iax.conf/extensions.conf) ===
+      # === IAX2 认证信息 (将被注入到配置文件中) ===
+      - IAX_USER=your_iax_extension
+      - IAX_PASS=your_iax_password
+
+      # === Bot Credentials ===
+      # === 机器人凭证配置 ===
+      # Telegram
+      - TG_TOKEN=
+      - TG_ALLOWED_IDS=
+
+      # QQ Bot
+      # QQ机器人设置HTTP服务器，推荐[NapCatQQ](https://github.com/NapNeko/NapCatQQ)
+      # api配置详细说明参见[onebot-11](https://github.com/botuniverse/onebot-11/blob/master/communication/http.md)
+      - QQ_API_URL=http://127.0.0.1:3000/send_private_msg
+      - QQ_BEARER_TOKEN=
+      - QQ_USER_ID=
+
+      # DingTalk Bot
+      # 钉钉机器人加签模式配置
+      - DD_TOKEN=
+      - DD_SECRET=
+
+      # === System Settings ===
+      # === 系统设置 ===
+      # 本机号码
+      - MY_PHONE_NUMBER=
+      # Startup Silence Window (seconds) to prevent spam from old logs
+      # 启动静默期（秒），用于过滤 Asterisk 启动时读取到的历史积压消息
+      - STARTUP_SILENCE_WINDOW=10
+      # Proxy Setting (Optional, set to None if not used)
+      # 代理设置（可选，不使用则填 None）
+      # 示例: - PROXY_URL=http://127.0.0.1:7890
+      - PROXY_URL=None
+
+    command: /opt/start.sh
