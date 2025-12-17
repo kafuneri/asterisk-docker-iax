@@ -4,6 +4,7 @@ services:
     #自行编译请取消如下注释
     #build: .
     #image: asterisk-docker-iax
+    # 默认arm64设备，x86主机请使用kafuneri/asterisk-docker-iax:amd64
     image: kafuneri/asterisk-docker-iax:arm64
     container_name: asterisk-ec20
     restart: always
