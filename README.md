@@ -181,21 +181,48 @@ docker compose logs -f
 
 ## ❓ 常见问题
 
-**Q: 启动时提示 `Unable to open /dev/ttyUSB*`？**
-A: 请检查 `docker-compose.yml` 中的 `devices` 映射路径是否正确，以及宿主机是否已插上 4G 模块。
+**Q: 系统运行正常，但突然收不到新短信了？**
+
+这通常是因为 SIM 卡的硬件存储空间已满（通常上限为 50 条）。一旦存满，运营商的新短信将被阻塞。建议定期执行清空指令。
+
+1. 手动诊断与修复
+
+在宿主机执行以下命令：
+
+```bash
+# 1. 查询当前存储状态 假设容器名称为asterisk-ec20
+# 预期回复示例: +CPMS: "SM",50,50... (前面的 50 表示已用，后面的 50 表示总容量)
+docker exec asterisk-ec20 asterisk -rx "quectel cmd quectel0 AT+CPMS?"
+
+# 2. 强制清空 SIM 卡 (解决问题)
+# AT+CMGD=1,4 表示删除所有类型的短信
+docker exec asterisk-ec20 asterisk -rx "quectel cmd quectel0 AT+CMGD=1,4"
+```
+
+2. 设置自动清理 (推荐)
+
+建议在宿主机设置 crontab 计划任务，每天凌晨自动清理一次，确保持久稳定。
+
+- **编辑计划任务**: `crontab -e`
+- **添加如下一行** (每天凌晨 4:30 执行清理):
+
+```Bash
+30 4 * * * docker exec asterisk-ec20 asterisk -rx "quectel cmd quectel0 AT+CMGD=1,4"
+```
+
+> **提示**: 如果您使用 1Panel 或宝塔面板，可以直接在“计划任务”中添加上述 Shell 脚本命令。
+
+**Q: 启动时提示 `Unable to open /dev/ttyUSB*`？**  
+
+请检查 `docker-compose.yml` 中的 `devices` 映射路径是否正确，以及宿主机是否已插上 4G 模块。
 
 **Q: Zoiper 注册成功但没有声音？**
-A:
 
 1. 检查 `docker-compose.yml` 是否开启了 `privileged: true`。
 2. 检查 `/dev/snd` 是否正确挂载。
 3. 确保宿主机上没有其他程序（如 PulseAudio）独占声卡。
-
-**Q: 重启容器后收到一堆旧短信通知？**
-A: 适当调大 `STARTUP_SILENCE_WINDOW` 的值（例如 20 或 40），让 Bot 在启动初期自动清理积压的旧日志。
-
 ---
 
-## 📄 License
 
-MIT License
+**Q: 重启容器后收到一堆旧短信通知？**
+适当调大 `STARTUP_SILENCE_WINDOW` 的值（例如 20 或 40），让 Bot 在启动初期自动清理积压的旧日志。
