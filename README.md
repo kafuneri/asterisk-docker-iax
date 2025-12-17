@@ -224,5 +224,6 @@ docker exec asterisk-ec20 asterisk -rx "quectel cmd quectel0 AT+CMGD=1,4"
 ---
 
 
-**Q: 重启容器后收到一堆旧短信通知？**
+**Q: 重启容器后收到一堆旧短信通知？**  
+
 适当调大 `STARTUP_SILENCE_WINDOW` 的值（例如 20 或 40），让 Bot 在启动初期自动清理积压的旧日志。
