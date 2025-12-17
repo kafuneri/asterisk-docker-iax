@@ -42,7 +42,9 @@ RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple \
 
 # Setup Runtime Directories and Permissions
 # 配置运行时目录及权限
-RUN mkdir -p /var/log/asterisk/unread_sms && chmod 777 /var/log/asterisk/unread_sms
+# 同时创建 unread_sms 和 cdr-csv 目录
+RUN mkdir -p /var/log/asterisk/unread_sms /var/log/asterisk/cdr-csv \
+    && chmod 777 /var/log/asterisk/unread_sms /var/log/asterisk/cdr-csv
 
 # Setup Startup Script
 # 设置启动脚本权限
